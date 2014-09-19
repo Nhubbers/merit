@@ -54,10 +54,6 @@ module Merit
       producer.load_curve.set(point, value)
     end
 
-    def assign_price_setting(order, producer, point)
-      order.price_setting_producers[point] = producer
-    end
-
     # Internal: Computes the total energy demand for a given +point+.
     #
     # order - The merit order.
@@ -115,15 +111,8 @@ module Merit
         elsif remaining > 0.0
           assign_load(producer, point, remaining)
 
-          # Cost-function producers with at least one unit of capacity available
-          # will be the price-setting producer.
-          if producer.cost_strategy.price_setting?(point)
-            assign_price_setting(order, producer, point)
-            break
-          end
+          break
         else
-          assign_price_setting(order, producer, point)
-
           # Optimisation: If all of the demand has been accounted for, there
           # is no need to waste time with further iterations and expensive
           # calls to Producer#max_load_at.
@@ -312,8 +301,6 @@ module Merit
         elsif remaining > 0.0
           assign_load(producer, point, remaining)
         else
-          assign_price_setting(order, producer, point)
-
           # Optimisation: If all of the demand has been accounted for, there
           # is no need to waste time with further iterations and expensive
           # calls to Producer#max_load_at.

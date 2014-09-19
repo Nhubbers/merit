@@ -95,7 +95,7 @@ module Merit
       end
 
       it 'assigns the price setting producer with nothing' do
-        expect(order.price_setting_producers[0]).to be_nil
+        expect(order.price_curve.producer_at(0)).to be_nil
       end
     end
 
@@ -140,7 +140,7 @@ module Merit
       end
 
       it 'assigns the price setting producer with the next dispatchable' do
-        expect(order.price_setting_producers[0]).to eql(dispatchable_two)
+        expect(order.price_curve.producer_at(0)).to eql(dispatchable_two)
       end
 
       context 'and the dispatchable is a cost-function producer' do
@@ -150,7 +150,7 @@ module Merit
 
         context 'with no remaining capacity' do
           it 'assigns the next dispatchable as price-setting' do
-            expect(order.price_setting_producers[0]).to eql(dispatchable_two)
+            expect(order.price_curve.producer_at(0)).to eql(dispatchable_two)
           end
         end # with no remaining capacity
 
@@ -160,7 +160,7 @@ module Merit
           end
 
           it 'assigns the current dispatchable as price-setting' do
-            expect(order.price_setting_producers[0]).to eql(dispatchable)
+            expect(order.price_curve.producer_at(0)).to eql(dispatchable)
           end
         end # with no remaining capacity
       end # and the dispatchable is a cost-function producer
@@ -188,9 +188,8 @@ module Merit
         expect(load_value).to be_within(0.001).of(0.0)
       end
 
-      it 'assigns the price setting producer with nothing' do
-        expect(order.price_setting_producers).to eql \
-          Array.new(POINTS, dispatchable)
+      it 'assigns the price setting producer to be the first producer' do
+        expect(order.price_curve.producer_at(0)).to eql(dispatchable)
       end
     end
 
@@ -278,7 +277,7 @@ module Merit
         end
 
         it 'is price-setting' do
-          expect(order.price_setting_producers[0]).to_not eq(ic)
+          expect(order.price_curve.producer_at(0)).to eq(ic)
         end
       end # when the producer is competitive
 
@@ -288,7 +287,7 @@ module Merit
         end
 
         it 'is price-setting' do
-          expect(order.price_setting_producers[0]).to eq(ic)
+          expect(order.price_curve.producer_at(0)).to eq(ic)
         end
       end # when the producer is competitive
 
@@ -298,7 +297,7 @@ module Merit
         end
 
         it 'is not price-setting' do
-          expect(order.price_setting_producers[24]).to_not eq(ic)
+          expect(order.price_curve.producer_at(24)).to_not eq(ic)
         end
       end # when the producer is uncompetitive
     end # with a variable-marginal-cost producer
