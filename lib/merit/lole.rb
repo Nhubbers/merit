@@ -33,6 +33,8 @@ module Merit
     # Returns a Integer representing the number of hours where capacity was
     # exceeded.
     def expectation(demand_curve, capacity, excludes = [])
+      excludes = excludes.select(&@order.participants.method(:key?))
+
       if excludes.any?
         demand_curve = demand_curve -
           excludes.map { |key| @order.participants[key].load_curve }.reduce(:+)
