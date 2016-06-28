@@ -16,6 +16,7 @@ require_relative 'merit/curve'
 require_relative 'merit/order'
 require_relative 'merit/order_attribute_groups'
 require_relative 'merit/load_profile'
+require_relative 'merit/price_curves'
 
 require_relative 'merit/participant_set'
 
@@ -27,7 +28,13 @@ require_relative 'merit/participants/user'
 require_relative 'merit/participants/user/total_consumption'
 require_relative 'merit/participants/user/with_curve'
 
+require_relative 'merit/flex/base'
+require_relative 'merit/flex/black_hole'
+require_relative 'merit/flex/reserve'
+require_relative 'merit/flex/storage'
+
 require_relative 'merit/lole'
+require_relative 'merit/excess'
 
 # Helpers
 require_relative 'merit/bar_chart'

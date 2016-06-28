@@ -51,11 +51,7 @@ module Merit
     #
     # Returns nothing.
     def assign_load(producer, point, value)
-      producer.load_curve.set(point, value)
-    end
-
-    def assign_price_setting(order, producer, point)
-      order.price_setting_producers[point] = producer
+      producer.set_load(point, value)
     end
 
     # Internal: Computes the total energy demand for a given +point+.
@@ -99,8 +95,37 @@ module Merit
         raise SubZeroDemand.new(point, remaining)
       end
 
+      flex = producers.flex
+
       producers.always_on(point).each do |producer|
-        remaining -= producer.max_load_at(point)
+        produced = producer.max_load_at(point)
+
+        if produced > remaining
+          # The producer has enough to meet demand, and then have some left
+          # over for flex consumption.
+          produced -= remaining
+          remaining = 0.0
+
+          if produced > 0
+            flex.each do |tech|
+              produced -= tech.assign_excess(point, produced)
+
+              # If there is no energy remaining to be assigned we can exit early
+              # and, as an added bonus, prevent assigning tiny negatives
+              # resulting from floating point errors, which messes up
+              # technologies which have a Reserve with volume 0.0.
+              break if produced <= 1e-11
+            end
+          end
+
+          break if produced > 0
+        elsif produced < remaining
+          # The producer is emitting less energy that demanded. Take it all and
+          # continue with the next producer.
+          remaining -= produced
+        end
+
+        remaining = 0.0 if remaining < 0.0
       end
 
       producers.transients(point).each do |producer|
@@ -112,21 +137,8 @@ module Merit
 
         if max_load < remaining
           assign_load(producer, point, max_load)
-        elsif remaining > 0.0
-          assign_load(producer, point, remaining)
-
-          # Cost-function producers with at least one unit of capacity available
-          # will be the price-setting producer.
-          if producer.cost_strategy.price_setting?(point)
-            assign_price_setting(order, producer, point)
-            break
-          end
         else
-          assign_price_setting(order, producer, point)
-
-          # Optimisation: If all of the demand has been accounted for, there
-          # is no need to waste time with further iterations and expensive
-          # calls to Producer#max_load_at.
+          assign_load(producer, point, remaining) if remaining > 0
           break
         end
 
@@ -193,7 +205,7 @@ module Merit
       @chunk_size.times do |position|
         # Don't set values beyond Dec 24th @ 23:00.
         if (future_point = (position * PER_DAY) + point) < Merit::POINTS
-          producer.load_curve.set(future_point, value)
+          producer.set_load(future_point, value)
         end
       end
     end
@@ -312,8 +324,6 @@ module Merit
         elsif remaining > 0.0
           assign_load(producer, point, remaining)
         else
-          assign_price_setting(order, producer, point)
-
           # Optimisation: If all of the demand has been accounted for, there
           # is no need to waste time with further iterations and expensive
           # calls to Producer#max_load_at.

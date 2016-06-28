@@ -15,6 +15,8 @@ module Merit
       elsif options[:cost_spread]
         args = options.values_at(:marginal_costs, :cost_spread)
         LinearCostFunction.new(producer, *args)
+      elsif options[:marginal_costs] == :null
+        Null.new(producer)
       elsif options[:marginal_costs]
         Constant.new(producer, options[:marginal_costs])
       else
@@ -57,6 +59,13 @@ module Merit
       # Returns a Numeric.
       def price_at(point, allow_loaded = false)
         assert_price_setting!(point, allow_loaded)
+        marginal_cost
+      end
+
+      # Public: Returns the cost of the producer at a given point in time.
+      #
+      # Returns a numeric.
+      def cost_at(point)
         marginal_cost
       end
 
@@ -125,6 +134,18 @@ module Merit
       end
     end # Constant
 
+    # A cost strategy which has no cost and whose producer will never be
+    # price-setting. For example, storage.
+    class Null < Constant
+      def initialize(producer)
+        super(producer, 0.0)
+      end
+
+      def price_setting?(*)
+        false
+      end
+    end # Null
+
     # Calculates the marginal cost of the producer by reading the value from a
     # curve. The cost may change depending on the hour.
     #
@@ -144,6 +165,10 @@ module Merit
 
       def price_at(point, allow_loaded = false)
         assert_price_setting!(point, allow_loaded)
+        sortable_cost(point)
+      end
+
+      def cost_at(point)
         sortable_cost(point)
       end
 
@@ -180,6 +205,10 @@ module Merit
         cost_at_load(@producer.production(:mwh) / Merit::POINTS)
       end
 
+      def cost_at(point)
+        cost_at_load(@producer.load_curve.get(point))
+      end
+
       def price_at(point, allow_loaded = false)
         if @producer.provides_price?
           cost_at_load(@producer.load_curve.get(point))
@@ -200,7 +229,7 @@ module Merit
           @producer.output_capacity_per_unit +
           @producer.load_curve.get(point)
 
-        pricing_load < @producer.available_output_capacity
+        pricing_load <= @producer.available_output_capacity
       end
 
       def sortable_cost(*)

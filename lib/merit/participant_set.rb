@@ -41,7 +41,7 @@ module Merit
     # Returns something which responds to #always_on and #transients
     def producers_for_calculation
       if producers.any? { |p| p.cost_strategy.variable? }
-        producers = ParticipantSet::Resortable.new(self)
+        ParticipantSet::Resortable.new(self)
       else
         self
       end
@@ -71,6 +71,13 @@ module Merit
 
         dispatchables
       end
+    end
+
+    # Public: Returns all participants which are flexible technologies.
+    #
+    # TODO Sort by user-preference.
+    def flex
+      @flex || select_participants(Flex::Base)
     end
 
     # Public: Returns all the users of energy.
@@ -157,6 +164,7 @@ module Merit
       @must_runs     = must_runs.freeze
       @dispatchables = dispatchables.freeze
       @producers     = producers.freeze
+      @flex          = flex.freeze
       @users         = users.freeze
 
       @always_on, @transients = split_producers.map(&:freeze)
@@ -199,8 +207,11 @@ module Merit
     # a variable marginal cost, requiring the producers to be sorted in every
     # calculation point.
     class Resortable
+      attr_reader :flex
+
       def initialize(set)
-        @always_on, @transients = set.always_on, set.transients
+        @always_on, @transients, @flex =
+          set.always_on, set.transients, set.flex
       end
 
       def always_on(point)

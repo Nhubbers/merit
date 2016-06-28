@@ -34,13 +34,6 @@ module Merit
                      'full_load_hours',
                      'production' ]
 
-    attr_reader :price_setting_producers
-
-    # Public: created a new Order
-    def initialize
-      @price_setting_producers = Array.new(POINTS)
-    end
-
     # ---------- Calculate! -----------
 
     # Calculates the Merit Order and makes sure it happens only once.
@@ -72,25 +65,18 @@ module Merit
     # expensive **installed** producer multiplied with a factor 7.22.
     # If there is no dispatchable available, we just take 600.
     #
-    # See https://github.com/quintel/merit/issues/66#issuecomment-12317794
-    # for the rationale of this factor 7.22
     def price_at(time)
-      if producer = price_setting_producers[time]
-        producer.price_at(time)
-      elsif producer = participants.dispatchables.select { |p| p.number_of_units > 0 }.last
-        producer.price_at(time, true) * 7.22
-      else
-        600
-      end
+      price_curve.get(time)
     end
 
     # Public: Returns a Curve with all the (known) prices
     def price_curve
-      @price_curve ||= begin
-        prices = Curve.new
-        POINTS.times { |point| prices.set(point, price_at(point)) }
-        prices
-      end
+      @price_curve ||= PriceCurves::LastLoaded.new(self)
+    end
+
+    # Public: Sets a new price curve class.
+    def price_curve_class=(klass)
+      @price_curve = klass.new(self)
     end
 
     # Public: Returns a helper for calculating loss-of-load using the data given
@@ -99,6 +85,10 @@ module Merit
     # Returns a Merit::LOLE.
     def lole
       LOLE.new(self)
+    end
+
+    def excess(excludes = [])
+      Excess.new(self, excludes)
     end
 
     # Public: adds a participant to this order
